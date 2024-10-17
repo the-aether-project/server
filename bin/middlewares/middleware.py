@@ -1,5 +1,6 @@
 from aiohttp import web
 from .exceptions import BadRequestError, NotFoundError
+from aiohttp.web_exceptions import HTTPNotFound, HTTPBadRequest
 
 
 def create_error_middleware():
@@ -24,7 +25,7 @@ def create_error_middleware():
 
         except Exception as e:
             request.protocol.logger.exception(
-                f"Unhandled, Intenal server error : {str(e)}"
+                f"Unhandled, Intenal server error :: {str(e)}"
             )
             return web.json_response(
                 {
