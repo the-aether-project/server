@@ -1,6 +1,7 @@
 from aiohttp import web
+from aiohttp.web_exceptions import HTTPBadRequest, HTTPNotFound
+
 from .exceptions import BadRequestError, NotFoundError
-from aiohttp.web_exceptions import HTTPNotFound, HTTPBadRequest
 
 
 def create_error_middleware():
