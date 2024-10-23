@@ -1,0 +1,30 @@
+version: "3.8"
+services:
+  web:
+    build: .
+    ports:
+      - "7878:7878"
+    depends_on:
+      - postgres
+    networks:
+      - aether-network
+    environment:
+      - PYTHONUNBUFFERED=1
+  postgres:
+    image: postgres:14-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_DB = aether
+    ports:
+      - "5432:5432"
+    networks:
+      - aether-network
+    volumes:
+      - db:/var/lib/postgresql/data
+networks:
+  aether-network:
+    driver: bridge
+volumes:
+  db:
