@@ -1,4 +1,3 @@
-from .rtc import AetherRtc
+from .rtc import AetherRTC
 
-
-__all__ = ["AetherRtc"]
+__all__ = ["AetherRTC"]
