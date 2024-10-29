@@ -1,12 +1,11 @@
 import aiohttp.web as web
 
 import json
-
 from aether_server.routes.routes_decl import generic_routes
-from aether_server.routes.views.rtc_view import AetherRtc
+from aether_server.routes.utils import AetherRtc
 
 
-@generic_routes.view("/ws")
+@generic_routes.view("/ws", name="websocket")
 class AetherWSView(web.View):
     async def get(self):
         ws = web.WebSocketResponse()

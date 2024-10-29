@@ -6,5 +6,4 @@ __all__ = [
     "generic_routes",
     "AetherIndexView",
     "AetherWSView",
-    # "AetherRtcView",
 ]

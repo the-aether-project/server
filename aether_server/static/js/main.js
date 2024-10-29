@@ -1,16 +1,13 @@
 let videoPlayer = document.querySelector("#videoplayer")
 let startButton = document.querySelector("#start")
 
-
-const socket = new WebSocket("http://localhost:7878/ws");
-
+const socket = new WebSocket(ws_url);
 
 socket.onopen = () => {
-    console.log("Websocket initiated")
+    console.log("Websocket initiated");
 }
 
 socket.onmessage = async (event) => {
-
     const data = JSON.parse(event.data);
     switch (data.type) {
         case 'offer':
@@ -31,7 +28,7 @@ async function handleOffer(offer) {
 
 
         pc.addEventListener("track", (e) => {
-            console.log("got track that is , ", e);
+            console.log("got track that is:", e);
             if (e.track.kind == "video") {
                 videoPlayer.srcObject = e.streams[0];
                 videoPlayer.play().catch((err) => { console.log("Cannot player videplayer, ", err) })
@@ -55,6 +52,10 @@ function handleMsg(msg) {
 
 
 function init() {
+    if (!ws_url) {
+        console.log("Websocket url not provided from server");
+        return
+    }
     console.log("Init called")
     socket.send(JSON.stringify({ type: "initiateOffer" }));
 }
