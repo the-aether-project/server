@@ -1,8 +1,9 @@
+import json
+
 import aiohttp.web as web
 
-import json
 from aether_server.routes.routes_decl import generic_routes
-from aether_server.routes.utils import AetherRtc
+from aether_server.routes.utils import AetherRTC
 
 
 @generic_routes.view("/ws", name="websocket")
@@ -10,7 +11,7 @@ class AetherWSView(web.View):
     async def get(self):
         ws = web.WebSocketResponse()
         await ws.prepare(self.request)
-        rtc = AetherRtc()
+        rtc = AetherRTC()
 
         async for msg in ws:
             if msg.type == web.WSMsgType.CLOSE:
@@ -19,28 +20,27 @@ class AetherWSView(web.View):
 
             try:
                 data = msg.json()
-
-                match data["type"]:
-                    case "initiateOffer":
-                        res = await rtc.initiate_Offer()
-                        await ws.send_json({"type": "offer", "offer": res})
-
-                    case "answer":
-                        answer = data["data"]
-                        rtc = await rtc.take_answer(answer)
-                        await ws.send_json(
-                            {"type": "msg", "msg": "connection peered up"}
-                        )
-
-                    case _:
-                        await ws.send_json(
-                            {
-                                "type": "msg",
-                                "msg": f"Aether is up and running. Data {data['type']}",
-                            }
-                        )
-
             except json.JSONDecodeError:
                 await ws.send_json({"msg": "Could not decode obtained JSON."})
+                continue
 
+            match data["type"]:
+                case "initiateOffer":
+                    await ws.send_json(
+                        {"type": "offer", "offer": await rtc.initiate_Offer()}
+                    )
+
+                case "answer":
+                    await rtc.take_answer(data["payload"])
+                    await ws.send_json({"type": "msg", "msg": "Connection commencing."})
+
+                case _:
+                    await ws.send_json(
+                        {
+                            "type": "msg",
+                            "msg": f"Unsupported message type: {data['type']}",
+                        }
+                    )
+
+        await rtc.close()
         return ws
