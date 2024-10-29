@@ -1,4 +1,10 @@
 from .routes_decl import generic_routes
-from .views import AetherIndexView, AetherWSView, AetherRtcView
+from .views import AetherIndexView, AetherWSView
 
-__all__ = ["generic_routes", "AetherIndexView", "AetherWSView", "AetherRtcView"]
+
+__all__ = [
+    "generic_routes",
+    "AetherIndexView",
+    "AetherWSView",
+    # "AetherRtcView",
+]
