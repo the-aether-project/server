@@ -41,7 +41,7 @@ class AetherRtc:
 
     async def initiate_Offer(self):
         video_track = VideoStreamTrackFromFile(
-            # "path to the video"
+            # "provide path file here"
         )
         self.pc.addTrack(video_track)
 
