@@ -1,27 +1,31 @@
-from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack
-import cv2
-from av import VideoFrame
-
 import asyncio
 
+import cv2
+from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack
+from av import VideoFrame
 
-class VideoStreamTrackFromFile(VideoStreamTrack):
-    def __init__(self, file_path):
+SAMPLE_VIDEO = (
+    "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+)
+
+
+class VideoStreamTrackCV2(VideoStreamTrack):
+    def __init__(self, uri: str):
         super().__init__()
-        self.cap = cv2.VideoCapture(file_path)
-        self.frame_rate = self.cap.get(cv2.CAP_PROP_FPS) or 30
+
+        self.uri = uri
+        self.cv2_capture = cv2.VideoCapture(uri)
+        self.frame_rate = self.cv2_capture.get(cv2.CAP_PROP_FPS) or 30
 
     async def recv(self):
-        if not self.cap.isOpened():
-            print("Capture  source not open. Retrying.")
-            self.cap.open(self.cap.getBackendName(()))
-            if not self.cap.isOpened():
-                print("Failed")
-                raise RuntimeError("Video capture source not opened")
+        if not self.cv2_capture.isOpened():
+            self.cv2_capture.open(self.cv2_capture.getBackendName(()))
+            if not self.cv2_capture.isOpened():
+                raise RuntimeError(f"Could not open video source: {self.uri!r}")
 
-        ret, frame = self.cap.read()
+        ret, frame = self.cv2_capture.read()
         if not ret:
-            raise RuntimeError("Failed to read video source")
+            raise RuntimeError(f"Could not read frame from video source: {self.uri!r}")
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         video_frame = VideoFrame.from_ndarray(frame, format="rgb24")
@@ -31,18 +35,16 @@ class VideoStreamTrackFromFile(VideoStreamTrack):
         return video_frame
 
     def __del__(self):
-        if self.cap.isOpened():
-            self.cap.release()
+        if self.cv2_capture.isOpened():
+            self.cv2_capture.release()
 
 
-class AetherRtc:
+class AetherRTC:
     def __init__(self):
         self.pc = RTCPeerConnection()
 
     async def initiate_Offer(self):
-        video_track = VideoStreamTrackFromFile(
-            # "path to the video"
-        )
+        video_track = VideoStreamTrackCV2(SAMPLE_VIDEO)
         self.pc.addTrack(video_track)
 
         offer = await self.pc.createOffer()
@@ -53,6 +55,9 @@ class AetherRtc:
             "sdp": self.pc.localDescription.sdp,
         }
 
-    async def take_answer(self, answer_data):
+    async def take_answer(self, answer_data: dict):
         answer = RTCSessionDescription(sdp=answer_data["sdp"], type=answer_data["type"])
-        await self.pc.setRemoteDescription(answer)
+        return await self.pc.setRemoteDescription(answer)
+
+    async def close(self):
+        return await self.pc.close()
