@@ -11,11 +11,10 @@ BASE_DIR = pathlib.Path(__file__).parent
 
 def create_app(_) -> web.Application:
     app = web.Application()
-    aiohttp_jinja2.setup(app, loader=jinja2.FileSystemLoader("aether_server"))
+    aiohttp_jinja2.setup(app, loader=jinja2.FileSystemLoader("aether_server/templates"))
 
     app.router.add_static("/static/", path=str(BASE_DIR / "static"), name="static")
     app.add_routes(generic_routes)
-
     return app
 
 
