@@ -39,7 +39,7 @@ async function handleOffer(offer) {
         let answer = await pc.createAnswer();
         await pc.setLocalDescription(answer)
 
-        socket.send(JSON.stringify({ type: "answer", data: { sdp: pc.localDescription.sdp, type: pc.localDescription.type } }));
+        socket.send(JSON.stringify({ type: "answer", payload: { sdp: pc.localDescription.sdp, type: pc.localDescription.type } }));
     } catch (error) {
         console.log("Error occured while handling offer", error);
 
@@ -47,7 +47,7 @@ async function handleOffer(offer) {
 }
 
 function handleMsg(msg) {
-    console.log("Received : ", msg);
+    console.log("Inbound message: ", msg);
 }
 
 
