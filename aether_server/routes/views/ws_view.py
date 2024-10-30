@@ -34,6 +34,10 @@ class AetherWSView(web.View):
                     await rtc.take_answer(data["payload"])
                     await ws.send_json({"type": "msg", "msg": "Connection commencing."})
 
+                case "closeConnection":
+                    await rtc.close()
+                    await ws.send_json({"type": "msg", "msg": "Connection closed."})
+
                 case _:
                     await ws.send_json(
                         {

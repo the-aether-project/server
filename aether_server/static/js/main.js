@@ -1,5 +1,7 @@
-let videoPlayer = document.querySelector("#videoplayer")
+let videoPlayer = document.querySelector("#player")
 let startButton = document.querySelector("#start")
+let closeButton = document.querySelector("#close")
+closeButton.disabled = true;
 
 const socket = new WebSocket(ws_url);
 
@@ -28,11 +30,12 @@ async function handleOffer(offer) {
 
 
         pc.addEventListener("track", (e) => {
-            console.log("got track that is:", e);
             if (e.track.kind == "video") {
                 videoPlayer.srcObject = e.streams[0];
                 videoPlayer.play().catch((err) => { console.log("Cannot player videplayer, ", err) })
             }
+
+            closeButton.disabled = false;
         })
 
         await pc.setRemoteDescription(remoteOffer);
@@ -44,6 +47,18 @@ async function handleOffer(offer) {
         console.log("Error occured while handling offer", error);
 
     }
+}
+
+async function closeConnection() {
+    socket.send(
+        JSON.stringify({
+            type: "closeConnection"
+        })
+    )
+
+    videoPlayer.srcObject.getTracks().forEach(track => track.stop());
+    videoPlayer.srcObject = null;
+    closeButton.disabled = true;
 }
 
 function handleMsg(msg) {
@@ -62,3 +77,4 @@ function init() {
 
 
 startButton.addEventListener("click", init)
+closeButton.addEventListener("click", closeConnection)

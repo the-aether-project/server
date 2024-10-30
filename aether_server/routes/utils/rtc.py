@@ -1,12 +1,65 @@
 import asyncio
+import threading
+from typing import Tuple
 
 import cv2
 from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack
 from av import VideoFrame
 
+try:
+    import windows_capture
+
+    use_sample_instead = False
+except ImportError:
+    use_sample_instead = True
+
+
 SAMPLE_VIDEO = (
     "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
 )
+
+
+class ScreenStreamTrack(VideoStreamTrack):
+    def __init__(self, frame_rate: int = 60, resize_to: Tuple[int, int] = (1280, 720)):
+        super().__init__()
+
+        self.frame_rate = frame_rate
+        self.resize_to = resize_to
+
+        self.capture = windows_capture.WindowsCapture(draw_border=False)
+
+        self.__last_frame = None
+
+        @self.capture.event
+        def on_frame_arrived(
+            frame: "windows_capture.Frame",
+            capture_control: "windows_capture.InternalCaptureControl",
+        ):
+            # NOTE
+            # The screenshot is in BGRA format.
+            # PyAV does not support alpha channels.
+            buffer = frame.convert_to_bgr().frame_buffer
+
+            if self.resize_to:
+                buffer = cv2.resize(buffer, self.resize_to)
+
+            self.__last_frame = buffer
+
+        @self.capture.event
+        def on_closed():
+            ...
+
+        threading.Thread(target=self.capture.start).start()
+
+    async def recv(self):
+        if self.__last_frame is not None:
+            video_frame = VideoFrame.from_ndarray(self.__last_frame, format="bgr24")
+            video_frame.pts, video_frame.time_base = await self.next_timestamp()
+            await asyncio.sleep(1 / self.frame_rate)
+            return video_frame
+
+    def __del__(self):
+        self.capture.capture.stop()
 
 
 class VideoStreamTrackCV2(VideoStreamTrack):
@@ -44,8 +97,10 @@ class AetherRTC:
         self.pc = RTCPeerConnection()
 
     async def initiate_Offer(self):
-        video_track = VideoStreamTrackCV2(SAMPLE_VIDEO)
-        self.pc.addTrack(video_track)
+        if use_sample_instead:
+            self.pc.addTrack(VideoStreamTrackCV2(SAMPLE_VIDEO))
+        else:
+            self.pc.addTrack(ScreenStreamTrack())
 
         offer = await self.pc.createOffer()
         await self.pc.setLocalDescription(offer)
