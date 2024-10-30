@@ -3,9 +3,16 @@ import threading
 from typing import Tuple
 
 import cv2
-import windows_capture
 from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack
 from av import VideoFrame
+
+try:
+    import windows_capture
+
+    use_sample_instead = False
+except ImportError:
+    use_sample_instead = True
+
 
 SAMPLE_VIDEO = (
     "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
@@ -25,8 +32,8 @@ class ScreenStreamTrack(VideoStreamTrack):
 
         @self.capture.event
         def on_frame_arrived(
-            frame: windows_capture.Frame,
-            capture_control: windows_capture.InternalCaptureControl,
+            frame: "windows_capture.Frame",
+            capture_control: "windows_capture.InternalCaptureControl",
         ):
             # NOTE
             # The screenshot is in BGRA format.
@@ -90,7 +97,10 @@ class AetherRTC:
         self.pc = RTCPeerConnection()
 
     async def initiate_Offer(self):
-        self.pc.addTrack(ScreenStreamTrack())
+        if use_sample_instead:
+            self.pc.addTrack(VideoStreamTrackCV2(SAMPLE_VIDEO))
+        else:
+            self.pc.addTrack(ScreenStreamTrack())
 
         offer = await self.pc.createOffer()
         await self.pc.setLocalDescription(offer)
