@@ -24,9 +24,14 @@ socket.onmessage = async (event) => {
 async function handleOffer(offer) {
     console.log("handle offer presents ", offer);
 
+    let config = {
+        sdpSemantics: 'unified-plan',
+        iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }]
+    }
+
     try {
         const remoteOffer = new RTCSessionDescription(offer);
-        const pc = new RTCPeerConnection();
+        const pc = new RTCPeerConnection(config);
 
 
         pc.addEventListener("track", (e) => {
