@@ -2,6 +2,3 @@ aiohttp==3.10.10
 aiohttp_jinja2==1.6
 aiopg==1.3.3
 aiortc==1.9.0
-opencv-python==4.10.0.84
-pyav==13.1.0
-windows-capture==1.3.6; sys_platform == "win32"
