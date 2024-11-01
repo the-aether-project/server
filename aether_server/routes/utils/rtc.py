@@ -1,83 +1,117 @@
+import logging
 import sys
+from typing import Optional
 
 from aiortc import (
+    RTCConfiguration,
+    RTCIceServer,
     RTCPeerConnection,
     RTCSessionDescription,
-    RTCIceServer,
-    RTCConfiguration,
 )
-from aiortc.contrib.media import MediaPlayer
+from aiortc.contrib.media import MediaPlayer, MediaRelay, MediaStreamTrack
 
 SAMPLE_VIDEO = (
     "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
 )
-GDIGRAB_DEFAULT_OPTIONS = {
-    "framerate": "60",
-    "pixel_format": "bgr24",
-    "scale": "1280:720",
-}
 
 
-def get_gdigrab_source(screen="desktop", options=None, **kwargs):
-    return MediaPlayer(
-        screen,
-        format="gdigrab",
-        options=options or GDIGRAB_DEFAULT_OPTIONS,
-        **kwargs,
-    ).video
+class RTCPeerManager:
+    """
+    Singleton RTC Peer Manager
+    """
 
+    default_stun_server = "stun:stun.l.google.com:19302"
 
-X11GRAB_DEFAULT_OPTIONS = {
-    "video_size": "1920x1030",
-    "framerate": "50",
-    "draw_mouse": "1",
-}
+    def __new__(cls):
+        if hasattr(cls, "instance") and cls.instance is not None:
+            return cls.instance
 
+        cls.instance = super().__new__(cls)
+        return cls.instance
 
-def get_x11grab_source(screen=":1.0", options=None, **kwargs):
-    return MediaPlayer(
-        screen,
-        format="x11grab",
-        options=options or X11GRAB_DEFAULT_OPTIONS,
-        **kwargs,
-    ).video
-
-
-class AetherRTC:
     def __init__(self):
-        config = RTCConfiguration(
-            iceServers=[RTCIceServer(urls="stun:stun.l.google.com:19302")]
-        )
-        self.pc = RTCPeerConnection(configuration=config)
+        self.peers: set[RTCPeerConnection] = set()
 
-    async def initiate_Offer(self):
-        if sys.platform == "win32":
-            self.pc.addTrack(get_gdigrab_source())
-        elif sys.platform == "linux":
-            # print("x11 grab : ", vars(get_x11grab_source()))
-            self.pc.addTrack(get_x11grab_source())
-        else:
-            self.pc.addTrack(
-                MediaPlayer(SAMPLE_VIDEO).video,
+        self.logger = logging.getLogger("rtc.peermanager")
+        self.__screen_relay = MediaRelay()
+        self.__screen_track: Optional[MediaStreamTrack] = None
+
+    async def create_peer(self):
+        peer = RTCPeerConnection(
+            configuration=RTCConfiguration(
+                iceServers=[RTCIceServer(urls=RTCPeerManager.default_stun_server)]
             )
+        )
+        self.set_screen_source_for(peer)
 
-        offer = await self.pc.createOffer()
-        await self.pc.setLocalDescription(offer)
+        offer = await peer.createOffer()
+        await peer.setLocalDescription(offer)
 
-        @self.pc.on("connectionstatechange")
+        @peer.on("connectionstatechange")
         async def on_connectionstatechange():
-            print("Connection state is %s" % self.pc.connectionState)
-            if self.pc.connectionState == "failed":
-                await self.pc.close()
+            state = peer.connectionState
 
-        return {
-            "type": self.pc.localDescription.type,
-            "sdp": self.pc.localDescription.sdp,
-        }
+            if state in ("closed", "failed"):
+                self.peers.discard(peer)
 
-    async def take_answer(self, answer_data: dict):
-        answer = RTCSessionDescription(sdp=answer_data["sdp"], type=answer_data["type"])
-        return await self.pc.setRemoteDescription(answer)
+                if not self.peers:
+                    self.logger.info(
+                        "Clearing screen sources because of no active peers."
+                    )
+                    self.reset_screen_source()
+
+                return await peer.close()
+
+            if state == "connected":
+                self.peers.add(peer)
+
+        return peer
+
+    def reset_screen_source(self):
+        if self.__screen_track is not None:
+            self.__screen_track.stop()
+            self.__screen_track = None
+
+    def set_screen_source_for(self, peer: RTCPeerConnection):
+        if self.__screen_track is None:
+            if sys.platform == "win32":
+                player = MediaPlayer(
+                    "desktop",
+                    format="gdigrab",
+                    options={
+                        "framerate": "60",
+                        "pixel_format": "bgr24",
+                        "scale": "1280:720",
+                    },
+                )
+            elif sys.platform == "linux":
+                player = MediaPlayer(
+                    ":1.0",
+                    format="x11grab",
+                    options={
+                        "video_size": "1920x1030",
+                        "framerate": "50",
+                        "draw_mouse": "1",
+                    },
+                )
+            else:
+                self.logger.warn(
+                    "Screen-mirroring is not supported for %r.", sys.platform
+                )
+
+                player = MediaPlayer(SAMPLE_VIDEO)
+
+            self.__screen_track = player.video
+
+        peer.addTrack(self.__screen_relay.subscribe(self.__screen_track))
 
     async def close(self):
-        return await self.pc.close()
+        for peer in self.peers:
+            await peer.close()
+
+        self.reset_screen_source()
+        self.peers.clear()
+
+    @staticmethod
+    def create_session_description(sdp: str, type: str):
+        return RTCSessionDescription(sdp=sdp, type=type)
