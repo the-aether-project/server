@@ -1,19 +1,19 @@
-let videoPlayer = document.querySelector("#player")
-let startButton = document.querySelector("#start")
-let closeButton = document.querySelector("#close")
+const videoPlayer = document.querySelector("#player")
+const startButton = document.querySelector("#start")
+const closeButton = document.querySelector("#close")
 closeButton.disabled = true;
 
 const socket = new WebSocket(ws_url);
 
 socket.onopen = () => {
-    console.log("Websocket initiated");
+    console.log(`WebSocket connection established to server-obtained url: ${ws_url}`);
 }
 
 socket.onmessage = async (event) => {
     const data = JSON.parse(event.data);
     switch (data.type) {
         case 'offer':
-            handleOffer(data.offer);
+            handleOffer(data.stun_server, data.offer);
             break
         case 'msg':
             handleMsg(data.msg);
@@ -21,37 +21,27 @@ socket.onmessage = async (event) => {
     }
 }
 
-async function handleOffer(offer) {
-    console.log("handle offer presents ", offer);
-
+async function handleOffer(stun_server, offer) {
     let config = {
         sdpSemantics: 'unified-plan',
-        iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }]
+        iceServers: [{ urls: [stun_server] }]
     }
 
-    try {
-        const remoteOffer = new RTCSessionDescription(offer);
-        const pc = new RTCPeerConnection(config);
+    const remoteOffer = new RTCSessionDescription(offer);
+    const pc = new RTCPeerConnection(config);
 
+    pc.addEventListener("track", (stream) => {
+        if (stream.track.kind == "video") {
+            videoPlayer.srcObject = stream.streams[0];
+            videoPlayer.play().catch((err) => { console.log("Cannot player videplayer, ", err) })
+        }
 
-        pc.addEventListener("track", (e) => {
-            if (e.track.kind == "video") {
-                videoPlayer.srcObject = e.streams[0];
-                videoPlayer.play().catch((err) => { console.log("Cannot player videplayer, ", err) })
-            }
+        closeButton.disabled = false;
+    })
 
-            closeButton.disabled = false;
-        })
-
-        await pc.setRemoteDescription(remoteOffer);
-        let answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer)
-
-        socket.send(JSON.stringify({ type: "answer", payload: { sdp: pc.localDescription.sdp, type: pc.localDescription.type } }));
-    } catch (error) {
-        console.log("Error occured while handling offer", error);
-
-    }
+    await pc.setRemoteDescription(remoteOffer);
+    await pc.setLocalDescription(await pc.createAnswer())
+    socket.send(JSON.stringify({ type: "answer", payload: { sdp: pc.localDescription.sdp, type: pc.localDescription.type } }));
 }
 
 async function closeConnection() {
@@ -67,16 +57,15 @@ async function closeConnection() {
 }
 
 function handleMsg(msg) {
-    console.log("Inbound message: ", msg);
+    console.log(`Inbound message: ${msg}`);
 }
 
 
 function init() {
     if (!ws_url) {
-        console.log("Websocket url not provided from server");
+        console.error("Could not obtain websocket endpoint from the server.");
         return
     }
-    console.log("Init called")
     socket.send(JSON.stringify({ type: "initiateOffer" }));
 }
 
