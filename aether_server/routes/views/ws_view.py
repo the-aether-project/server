@@ -27,29 +27,29 @@ class AetherWSView(web.View):
                 continue
 
             match data["type"]:
-                case "initiateOffer":
-                    peer = await peer_manager.create_peer()
-
+                case "startConnection":
                     await ws.send_json(
                         {
-                            "type": "offer",
-                            "offer": {
-                                "sdp": peer.localDescription.sdp,
-                                "type": peer.localDescription.type,
-                            },
+                            "type": "negotiate",
                             "stun_server": peer_manager.default_stun_server,
                         }
                     )
 
-                case "answer":
+                case "offer":
                     payload = data["payload"]
 
-                    await peer.setRemoteDescription(
+                    peer = await peer_manager.create_peer(
                         peer_manager.create_session_description(**payload)
                     )
 
                     await ws.send_json(
-                        {"type": "msg", "msg": "Attempting to start connection."}
+                        {
+                            "type": "remoteDescription",
+                            "answer": {
+                                "sdp": peer.localDescription.sdp,
+                                "type": peer.localDescription.type,
+                            },
+                        }
                     )
 
                 case "closeConnection":
@@ -57,6 +57,7 @@ class AetherWSView(web.View):
                         await peer.close()
                         peer = None
                         await ws.send_json({"type": "msg", "msg": "Connection closed."})
+                    break
 
                 case _:
                     await ws.send_json(
@@ -68,4 +69,6 @@ class AetherWSView(web.View):
 
         if peer is not None:
             await peer.close()
+
+        await ws.close()
         return ws

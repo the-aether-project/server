@@ -36,15 +36,23 @@ class RTCPeerManager:
         self.__screen_relay = MediaRelay()
         self.__screen_track: Optional[MediaStreamTrack] = None
 
-    async def create_peer(self):
+    async def create_peer(
+        self, with_remote_desc: Optional[RTCSessionDescription] = None
+    ):
         peer = RTCPeerConnection(
             configuration=RTCConfiguration(
                 iceServers=[RTCIceServer(urls=RTCPeerManager.default_stun_server)]
             )
         )
+
         self.set_screen_source_for(peer)
 
-        offer = await peer.createOffer()
+        if with_remote_desc:
+            await peer.setRemoteDescription(with_remote_desc)
+            offer = await peer.createAnswer()
+        else:
+            offer = await peer.createOffer()
+
         await peer.setLocalDescription(offer)
 
         @peer.on("connectionstatechange")
@@ -53,6 +61,7 @@ class RTCPeerManager:
 
             if state in ("closed", "failed"):
                 self.peers.discard(peer)
+                self.logger.info("Peer %d discarded.", id(peer))
 
                 if not self.peers:
                     self.logger.info(
@@ -63,6 +72,7 @@ class RTCPeerManager:
                 return await peer.close()
 
             if state == "connected":
+                self.logger.info("Peer %d connected.", id(peer))
                 self.peers.add(peer)
 
         return peer
@@ -80,8 +90,7 @@ class RTCPeerManager:
                     format="gdigrab",
                     options={
                         "framerate": "60",
-                        "pixel_format": "bgr24",
-                        "scale": "1280:720",
+                        # "pixel_format": "bgr24",
                     },
                 )
             elif sys.platform == "linux":
