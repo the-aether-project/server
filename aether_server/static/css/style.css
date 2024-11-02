@@ -1,18 +1,33 @@
+/* Define CSS variables for easy customization */
+:root {
+    --primary-bg-color: rgb(0, 81, 128);
+    --button-bg-color: rgba(0, 0, 0, 0.45);
+    --font-color: white;
+    --header-color: red;
+    --font-family: 'Lexend', sans-serif;
+    --button-padding: 15px 20px;
+    --button-font-size: 15px;
+    --button-font-weight: 500;
+}
+
 body {
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     gap: 20px;
-    background-color: rgb(0, 81, 128);
-    color: white;
-    font: 16px Lexend, sans-serif;
+    background-color: var(--primary-bg-color);
+    color: var(--font-color);
+    font-family: var(--font-family);
+    font-size: 16px;
 }
 
+/* Header styling with updated color */
 #header {
-    color: red !important;
+    color: var(--header-color);
 }
 
+/* Button container for consistent spacing */
 .buttons {
     display: flex;
     gap: 20px;
@@ -20,23 +35,24 @@ body {
 
 #start,
 #close {
-    padding: 15px 20px;
-    font-size: 15px;
-    font-weight: 500;
-    border: 3px;
-    border-radius: 5px;
-    background-color: rgba(0, 0, 0, 0.451);
-    color: white;
-    font: 12px Lexend, sans-serif;
+    padding: var(--button-padding);
+    font-family: var(--font-family);
+    font-size: var(--button-font-size);
+    font-weight: var(--button-font-weight);
+    background-color: var(--button-bg-color);
+    color: var(--font-color);
     text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s;
 }
 
+#start:hover,
+#close:hover {
+    background-color: rgba(0, 0, 0, 0.6);
+}
 
-
+/* Video player styling without controls */
 #player {
-    height: 60vh;
-    width: 60vw;
-    background-color: rgba(0, 0, 0, 0.451);
-    border: 5px;
-    border-radius: 10px;
+    background-color: var(--button-bg-color);
 }
