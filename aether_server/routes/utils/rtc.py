@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 from typing import Optional
 
@@ -90,17 +91,15 @@ class RTCPeerManager:
                     format="gdigrab",
                     options={
                         "framerate": "60",
-                        # "pixel_format": "bgr24",
                     },
                 )
             elif sys.platform == "linux":
                 player = MediaPlayer(
-                    ":1.0",
+                    f"{os.getenv('DISPLAY')}.0",
                     format="x11grab",
                     options={
-                        "video_size": "1920x1030",
-                        "framerate": "50",
-                        "draw_mouse": "1",
+                        "video_size": "1920x1080",
+                        "framerate": "60",
                     },
                 )
             else:
