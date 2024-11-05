@@ -102,6 +102,15 @@ class RTCPeerManager:
                         "framerate": "60",
                     },
                 )
+            elif sys.platform == "darwin":
+                player = MediaPlayer(
+                    "default",
+                    format="avfoundation",
+                    options={
+                        "framerate": "60",
+                        "pixel_format": "yuv420p",
+                    },
+                )
             else:
                 self.logger.warn(
                     "Screen-mirroring is not supported for %r.", sys.platform
