@@ -5,9 +5,7 @@ import sys
 from typing import Optional
 
 from aiortc import (
-    RTCConfiguration,
     RTCDataChannel,
-    RTCIceServer,
     RTCPeerConnection,
     RTCSessionDescription,
 )
@@ -29,8 +27,6 @@ class RTCPeerManager:
     Singleton RTC Peer Manager
     """
 
-    default_stun_server = "stun:stun.l.google.com:19302"
-
     def __new__(cls):
         if hasattr(cls, "instance") and cls.instance is not None:
             return cls.instance
@@ -48,11 +44,7 @@ class RTCPeerManager:
     async def create_peer(
         self, with_remote_desc: Optional[RTCSessionDescription] = None
     ):
-        peer = RTCPeerConnection(
-            configuration=RTCConfiguration(
-                iceServers=[RTCIceServer(urls=RTCPeerManager.default_stun_server)]
-            )
-        )
+        peer = RTCPeerConnection()
 
         self.set_screen_source_for(peer)
 
