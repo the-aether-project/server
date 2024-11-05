@@ -1,0 +1,26 @@
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(100) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    stored_credentials VARCHAR(255) NOT NULL,
+    is_landlord BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS computers (
+    id SERIAL PRIMARY KEY,
+    rate INT CHECK (rate >= 0),
+    landlord_id INT REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS transactions (
+    id SERIAL PRIMARY KEY,
+    starttime TIMESTAMP NOT NULL,
+    endtime TIMESTAMP,
+    customer_id INT REFERENCES users(id) ON DELETE SET NULL,
+    landlord_id INT REFERENCES users(id) ON DELETE SET NULL,
+    computer_id INT REFERENCES computers(id) ON DELETE SET NULL,
+    total_cost INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
