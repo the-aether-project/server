@@ -1,50 +1,22 @@
-import json
-
 import aiohttp.web as web
 
 from aether_server.routes.routes_decl import generic_routes
-from aether_server.routes.utils import AetherRTC
+from aether_server.routes.utils import RTC_APPKEY
 
 
-@generic_routes.view("/ws", name="websocket")
-class AetherWSView(web.View):
-    async def get(self):
-        ws = web.WebSocketResponse()
-        await ws.prepare(self.request)
-        rtc = AetherRTC()
+@generic_routes.view("/webrtc-offer")
+class AetherWebRTCView(web.View):
+    async def post(self):
+        data = await self.request.json()
 
-        async for msg in ws:
-            if msg.type == web.WSMsgType.CLOSE:
-                await ws.close()
-                break
+        peer_manager = self.request.app[RTC_APPKEY]
+        peer = await peer_manager.create_peer(
+            peer_manager.create_session_description(**data)
+        )
 
-            try:
-                data = msg.json()
-            except json.JSONDecodeError:
-                await ws.send_json({"msg": "Could not decode obtained JSON."})
-                continue
-
-            match data["type"]:
-                case "initiateOffer":
-                    await ws.send_json(
-                        {"type": "offer", "offer": await rtc.initiate_Offer()}
-                    )
-
-                case "answer":
-                    await rtc.take_answer(data["payload"])
-                    await ws.send_json({"type": "msg", "msg": "Connection commencing."})
-
-                case "closeConnection":
-                    await rtc.close()
-                    await ws.send_json({"type": "msg", "msg": "Connection closed."})
-
-                case _:
-                    await ws.send_json(
-                        {
-                            "type": "msg",
-                            "msg": f"Unsupported message type: {data['type']}",
-                        }
-                    )
-
-        await rtc.close()
-        return ws
+        return web.json_response(
+            {
+                "sdp": peer.localDescription.sdp,
+                "type": peer.localDescription.type,
+            }
+        )
