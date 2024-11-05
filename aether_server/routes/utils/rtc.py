@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import sys
@@ -5,11 +6,18 @@ from typing import Optional
 
 from aiortc import (
     RTCConfiguration,
+    RTCDataChannel,
     RTCIceServer,
     RTCPeerConnection,
     RTCSessionDescription,
 )
 from aiortc.contrib.media import MediaPlayer, MediaRelay, MediaStreamTrack
+
+try:
+    import pyautogui
+except ImportError:
+    pyautogui = None
+
 
 SAMPLE_VIDEO = (
     "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
@@ -55,6 +63,7 @@ class RTCPeerManager:
             offer = await peer.createOffer()
 
         await peer.setLocalDescription(offer)
+        logger = self.logger.getChild(f"peer-0x{id(peer):0x}")
 
         @peer.on("connectionstatechange")
         async def on_connectionstatechange():
@@ -75,6 +84,32 @@ class RTCPeerManager:
             if state == "connected":
                 self.logger.info("Peer %d connected.", id(peer))
                 self.peers.add(peer)
+
+        @peer.on("datachannel")
+        def on_datachannel(channel: RTCDataChannel):
+            if channel.label not in ("mouse_events",):
+                return
+
+            @channel.on("message")
+            def on_message(message: str):
+                if channel.label == "mouse_events":
+                    data = json.loads(message)
+
+                    if pyautogui is not None:
+                        width, height = pyautogui.size()
+                        current_pos = pyautogui.position()
+
+                        logger.info(
+                            "Clicked at: x=%f, y=%f",
+                            data["payload"]["clicked_at"]["x_ratio"] * width,
+                            data["payload"]["clicked_at"]["y_ratio"] * height,
+                        )
+                        pyautogui.leftClick(
+                            x=data["payload"]["clicked_at"]["x_ratio"] * width,
+                            y=data["payload"]["clicked_at"]["y_ratio"] * height,
+                        )
+
+                        pyautogui.moveTo(*current_pos)
 
         return peer
 

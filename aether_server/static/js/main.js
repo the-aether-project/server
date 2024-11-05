@@ -4,18 +4,45 @@ const closeButton = document.querySelector("button#close")
 
 closeButton.disabled = true;
 
-var pc = null;
+const STUN_SERVER = "stun:stun.l.google.com:19302";
 
-function negotiate(socket, stun_server) {
+
+function openConnection() {
 
     var config = {
-        iceServers: [{ urls: [stun_server] }],
+        iceServers: [{ urls: [STUN_SERVER] }],
         bundlePolicy: "max-bundle",
     }
 
     pc = new RTCPeerConnection(config);
 
     pc.addTransceiver('video', { direction: 'recvonly' });
+    var dataChannel = pc.createDataChannel("mouse_events");
+
+    const clickHandler = (event) => {
+
+        const rect = videoPlayer.getBoundingClientRect();
+        const x_ratio = (event.clientX - rect.left) / rect.width;
+        const y_ratio = (event.clientY - rect.top) / rect.height;
+
+        const click_payload = { x_ratio, y_ratio };
+
+        dataChannel.send(
+            JSON.stringify({
+                type: "mouse",
+                payload: { "clicked_at": click_payload },
+            })
+        );
+    }
+
+    dataChannel.onopen = () => {
+        videoPlayer.addEventListener("click", clickHandler);
+    }
+    dataChannel.onclose = () => {
+        videoPlayer.removeEventListener("click", clickHandler);
+    }
+
+
     pc.addEventListener('track', (evt) => {
         if (evt.track.kind == 'video') {
             videoPlayer.srcObject = evt.streams[0];
@@ -50,96 +77,46 @@ function negotiate(socket, stun_server) {
     }).then(() => {
         var offer = pc.localDescription;
 
-        socket.send(
-            JSON.stringify({
-                'type': 'offer',
-                'payload': {
-                    sdp: offer.sdp,
-                    type: offer.type,
+        fetch(
+            '/webrtc-offer',
+            {
+                method: 'POST',
+                body: JSON.stringify({
+                    'sdp': offer.sdp,
+                    'type': offer.type,
+                }),
+                headers: {
+                    'Content-Type': 'application/json'
                 }
-            })
+            }
+        ).then((response) => {
+            if (response.ok) {
+                return response.json();
+            } else {
+                throw new Error("Failed to send offer to the server.")
+            }
+        }).then((data) => {
+            pc.setRemoteDescription(data);
+        }).catch((e) => {
+            alert(e);
+        }
         )
+
     }).catch((e) => {
         alert(e);
     });
-}
 
 
-function closeConnection(socket) {
-    console.log("Closing connection!")
-    socket.send(
-        JSON.stringify({
-            type: "closeConnection"
-        })
-    )
+    let closeHandler = () => {
+        pc.close();
 
-    videoPlayer.srcObject.getTracks().forEach(track => track.stop());
-    videoPlayer.srcObject = null;
-    closeButton.removeEventListener("click", closeConnection)
-    closeButton.disabled = true;
-}
+        videoPlayer.srcObject.getTracks().forEach(track => track.stop());
+        videoPlayer.srcObject = null;
+        closeButton.removeEventListener("click", closeHandler)
+        closeButton.disabled = true;
+    };
 
-function handleMsg(msg) {
-    console.log(`Inbound message: ${msg}`);
-}
-
-
-async function openConnection() {
-
-    if (!ws_url) {
-        console.error("Could not obtain websocket endpoint from the server.");
-        return
-    }
-
-    const socket = new WebSocket(ws_url);
-
-    socket.onmessage = async (event) => {
-        const data = JSON.parse(event.data);
-        switch (data.type) {
-            case 'negotiate':
-                negotiate(socket, data.stun_server);
-                break
-            case 'remoteDescription':
-                if (pc !== null) {
-                    pc.setRemoteDescription(data.answer);
-                } else {
-                    console.error("Received remote description before creating the peer connection.")
-                }
-                break
-            case 'msg':
-                handleMsg(data.msg);
-        }
-    }
-
-    await new Promise((resolve) => {
-        if (socket.readyState === WebSocket.OPEN) {
-            resolve();
-        } else {
-            socket.addEventListener('open', () => {
-                console.log("Connection established to the server-provided websocket endpoint:", ws_url)
-                resolve();
-            });
-        }
-    })
-
-    closeButton.addEventListener("click", () => closeConnection(socket))
-    socket.send(JSON.stringify({ type: "startConnection" }));
-
-    videoPlayer.addEventListener("click", (event) => {
-        const rect = videoPlayer.getBoundingClientRect();
-        const x_ratio = (event.clientX - rect.left) / rect.width;
-        const y_ratio = (event.clientY - rect.top) / rect.height;
-
-        const click_payload = { x_ratio, y_ratio };
-
-
-        socket.send(
-            JSON.stringify({
-                type: "mouse",
-                payload: { "clicked_at": click_payload },
-            })
-        );
-    });
+    closeButton.addEventListener("click", closeHandler)
 }
 
 
