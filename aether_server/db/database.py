@@ -1,59 +1,38 @@
+import os
+import pathlib
+from collections import namedtuple
+
+import aiohttp.web as web
 import aiopg
 
-default_credentials = ("aether", "root", "secret", "postgres", 5432)
+POOL_APPKEY = web.AppKey("database_pool", aiopg.Pool)
+
+credentials = namedtuple(
+    "credentials",
+    ("db", "user", "password", "host", "port"),
+    defaults=("aether", "root", "secret", "127.0.0.1", 5432),
+)
+
+default_credentials = credentials()
+schema_path = (pathlib.Path(__file__) / "../schema.sql").resolve()
 
 
-async def setup_database():
-    default_db, default_user, default_password, default_host, default_port = (
-        default_credentials
-    )
+def try_fetch_login_params_from_env(default_credentials=default_credentials):
+    (
+        default_db,
+        default_user,
+        default_password,
+        default_host,
+        default_port,
+    ) = default_credentials
 
-    dsn = f"user={default_user} password={default_password} host={default_host} port={default_port}"
+    db = os.getenv("DB_NAME", default_db)
+    user = os.getenv("DB_USER", default_user)
+    password = os.getenv("DB_PASSWORD", default_password)
+    host = os.getenv("DB_HOST", default_host)
+    port = os.getenv("DB_PORT", default_port)
 
-    # Establish connection and execute to test if db exist or not
-    async with aiopg.connect(dsn=dsn) as conn:
-        async with conn.cursor() as cur:
-            await cur.execute(
-                (f"SELECT 1 FROM pg_database WHERE datname = '{default_db}';")
-            )
-            exist = await cur.fetchone()
-
-            if exist[0] != 1:
-                await cur.execute(f"CREATE DATABASE {default_db};")
-                print("Database created")
-
-            await cur.execute("SELECT 1;")
-
-    # Modifying string to connect with dbname and executing dump file
-    dsn = f"dbname={default_db} {dsn}"
-    async with aiopg.connect(dsn=dsn) as conn:
-        async with conn.cursor() as cur:
-            print("Successfully connected")
-            content = ""
-            with open("aether_server/db/dump/aether.sql", "r") as file:
-                content = file.read()
-            try:
-                await cur.execute(content)
-            except Exception as e:
-                print(f"error: {e}")
-            else:
-                print("Successfully executed dump")
+    return f"dbname={db} user={user} password={password} host={host} port={port}"
 
 
-# For executing query call this function with params of tuples
-## Eg. query = "SELECT * FROM users WHERE username = %s AND age = %s;"params = ('johndoe', 25)
-async def ExecuteQuery(query, params=None):
-    default_db, default_user, default_password, default_host, default_port = (
-        default_credentials
-    )
-    dsn = f"dbname={default_db} user={default_user} password={default_password} host={default_host} port={default_port}"
-
-    async with aiopg.connect(dsn=dsn) as conn:
-        async with conn.cursor() as cur:
-            try:
-                await cur.execute(query, params)
-            except Exception as e:
-                print(f"error:{e}")
-            else:
-                result = await cur.fetchall()
-                return result
+__all__ = ["try_fetch_login_params_from_env", "schema_path", "POOL_APPKEY"]

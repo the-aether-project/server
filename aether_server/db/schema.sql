@@ -24,29 +24,9 @@ CREATE TABLE IF NOT EXISTS transactions (
     total_cost INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE OR REPLACE FUNCTION mark_transactions_deleted() 
-RETURNS TRIGGER AS $$
-BEGIN
-    UPDATE transactions
 
-    SET customer_id = NULL
-    WHERE customer_id = OLD.id;
-    
-    UPDATE transactions
-    SET landlord_id = NULL
-    WHERE landlord_id = OLD.id;
 
-    RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER IF NOT EXISTS user_deletion_trigger 
-AFTER DELETE ON users
-FOR EACH ROW
-EXECUTE FUNCTION mark_transactions_deleted();
-
-DROP FUNCTION IF EXISTS calculate_total_cost;
-DROP TRIGGER IF EXISTS update_total_cost ON transactions;
+DROP FUNCTION IF EXISTS calculate_total_cost CASCADE;
 
 CREATE OR REPLACE FUNCTION calculate_total_cost() 
 RETURNS TRIGGER AS $$
