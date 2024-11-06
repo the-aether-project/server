@@ -1,5 +1,3 @@
-import os
-
 import aiopg
 
 default_credentials = ("aether", "root", "secret", "postgres", 5432)
@@ -34,5 +32,28 @@ async def setup_database():
             content = ""
             with open("aether_server/db/dump/aether.sql", "r") as file:
                 content = file.read()
-            await cur.execute(content)
-            print("Successfully executed dump")
+            try:
+                await cur.execute(content)
+            except Exception as e:
+                print(f"error: {e}")
+            else:
+                print("Successfully executed dump")
+
+
+# For executing query call this function with params of tuples
+## Eg. query = "SELECT * FROM users WHERE username = %s AND age = %s;"params = ('johndoe', 25)
+async def ExecuteQuery(query, params=None):
+    default_db, default_user, default_password, default_host, default_port = (
+        default_credentials
+    )
+    dsn = f"dbname={default_db} user={default_user} password={default_password} host={default_host} port={default_port}"
+
+    async with aiopg.connect(dsn=dsn) as conn:
+        async with conn.cursor() as cur:
+            try:
+                await cur.execute(query, params)
+            except Exception as e:
+                print(f"error:{e}")
+            else:
+                result = await cur.fetchall()
+                return result
