@@ -55,6 +55,7 @@ function openConnection() {
             videoPlayer.play();
         }
 
+        startButton.disabled = true;
         closeButton.disabled = false;
     });
 
@@ -114,6 +115,7 @@ function openConnection() {
         videoPlayer.srcObject = null;
         closeButton.removeEventListener("click", closeHandler)
         closeButton.disabled = true;
+        startButton.disabled = false;
     };
 
     closeButton.addEventListener("click", closeHandler)
