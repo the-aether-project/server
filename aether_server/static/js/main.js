@@ -1,80 +1,123 @@
-let videoPlayer = document.querySelector("#player")
-let startButton = document.querySelector("#start")
-let closeButton = document.querySelector("#close")
+const videoPlayer = document.querySelector("video#player")
+const startButton = document.querySelector("button#start")
+const closeButton = document.querySelector("button#close")
+
 closeButton.disabled = true;
 
-const socket = new WebSocket(ws_url);
+const STUN_SERVER = "stun:stun.l.google.com:19302";
 
-socket.onopen = () => {
-    console.log("Websocket initiated");
-}
 
-socket.onmessage = async (event) => {
-    const data = JSON.parse(event.data);
-    switch (data.type) {
-        case 'offer':
-            handleOffer(data.offer);
-            break
-        case 'msg':
-            handleMsg(data.msg);
-            break
+function openConnection() {
+
+    var config = {
+        iceServers: [{ urls: [STUN_SERVER] }],
+        bundlePolicy: "max-bundle",
     }
-}
 
-async function handleOffer(offer) {
-    console.log("handle offer presents ", offer);
+    pc = new RTCPeerConnection(config);
 
-    try {
-        const remoteOffer = new RTCSessionDescription(offer);
-        const pc = new RTCPeerConnection();
+    pc.addTransceiver('video', { direction: 'recvonly' });
+    var dataChannel = pc.createDataChannel("mouse_events");
+
+    const clickHandler = (event) => {
+
+        const rect = videoPlayer.getBoundingClientRect();
+        const x_ratio = (event.clientX - rect.left) / rect.width;
+        const y_ratio = (event.clientY - rect.top) / rect.height;
+
+        const click_payload = { x_ratio, y_ratio };
+
+        dataChannel.send(
+            JSON.stringify({
+                type: "mouse",
+                payload: { "clicked_at": click_payload },
+            })
+        );
+    }
+
+    dataChannel.onopen = () => {
+        videoPlayer.addEventListener("click", clickHandler);
+    }
+    dataChannel.onclose = () => {
+        videoPlayer.removeEventListener("click", clickHandler);
+    }
 
 
-        pc.addEventListener("track", (e) => {
-            if (e.track.kind == "video") {
-                videoPlayer.srcObject = e.streams[0];
-                videoPlayer.play().catch((err) => { console.log("Cannot player videplayer, ", err) })
+    pc.addEventListener('track', (evt) => {
+        if (evt.track.kind == 'video') {
+            videoPlayer.srcObject = evt.streams[0];
+            videoPlayer.onloadedmetadata = () => {
+                videoPlayer.style.height = "60vh";
+                videoPlayer.style.aspectRatio = `${videoPlayer.videoWidth}/${videoPlayer.videoHeight}`;
+                videoPlayer.controls = false;
             }
 
-            closeButton.disabled = false;
-        })
+            videoPlayer.play();
+        }
 
-        await pc.setRemoteDescription(remoteOffer);
-        let answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer)
+        closeButton.disabled = false;
+    });
 
-        socket.send(JSON.stringify({ type: "answer", payload: { sdp: pc.localDescription.sdp, type: pc.localDescription.type } }));
-    } catch (error) {
-        console.log("Error occured while handling offer", error);
+    pc.createOffer().then((offer) => {
+        return pc.setLocalDescription(offer);
+    }).then(() => {
+        return new Promise((resolve) => {
+            if (pc.iceGatheringState === 'complete') {
+                resolve();
+            } else {
+                const checkState = () => {
+                    if (pc.iceGatheringState === 'complete') {
+                        pc.removeEventListener('icegatheringstatechange', checkState);
+                        resolve();
+                    }
+                };
+                pc.addEventListener('icegatheringstatechange', checkState);
+            }
+        });
+    }).then(() => {
+        var offer = pc.localDescription;
 
-    }
+        fetch(
+            '/webrtc-offer',
+            {
+                method: 'POST',
+                body: JSON.stringify({
+                    'sdp': offer.sdp,
+                    'type': offer.type,
+                }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        ).then((response) => {
+            if (response.ok) {
+                return response.json();
+            } else {
+                throw new Error("Failed to send offer to the server.")
+            }
+        }).then((data) => {
+            pc.setRemoteDescription(data);
+        }).catch((e) => {
+            alert(e);
+        }
+        )
+
+    }).catch((e) => {
+        alert(e);
+    });
+
+
+    let closeHandler = () => {
+        pc.close();
+
+        videoPlayer.srcObject.getTracks().forEach(track => track.stop());
+        videoPlayer.srcObject = null;
+        closeButton.removeEventListener("click", closeHandler)
+        closeButton.disabled = true;
+    };
+
+    closeButton.addEventListener("click", closeHandler)
 }
 
-async function closeConnection() {
-    socket.send(
-        JSON.stringify({
-            type: "closeConnection"
-        })
-    )
 
-    videoPlayer.srcObject.getTracks().forEach(track => track.stop());
-    videoPlayer.srcObject = null;
-    closeButton.disabled = true;
-}
-
-function handleMsg(msg) {
-    console.log("Inbound message: ", msg);
-}
-
-
-function init() {
-    if (!ws_url) {
-        console.log("Websocket url not provided from server");
-        return
-    }
-    console.log("Init called")
-    socket.send(JSON.stringify({ type: "initiateOffer" }));
-}
-
-
-startButton.addEventListener("click", init)
-closeButton.addEventListener("click", closeConnection)
+startButton.addEventListener("click", openConnection)

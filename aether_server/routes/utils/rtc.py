@@ -1,50 +1,161 @@
+import json
+import logging
+import os
 import sys
+from typing import Optional
 
-from aiortc import RTCPeerConnection, RTCSessionDescription
-from aiortc.contrib.media import MediaPlayer
+from aiortc import (
+    RTCDataChannel,
+    RTCPeerConnection,
+    RTCSessionDescription,
+)
+from aiortc.contrib.media import MediaPlayer, MediaRelay, MediaStreamTrack
+
+try:
+    import pyautogui
+except ImportError:
+    pyautogui = None
+
 
 SAMPLE_VIDEO = (
     "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
 )
-GDIGRAB_DEFAULT_OPTIONS = {
-    "framerate": "60",
-    "pixel_format": "bgr24",
-    "scale": "1280:720",
-}
 
 
-def get_gdigrab_source(screen="desktop", options=None, **kwargs):
-    return MediaPlayer(
-        screen,
-        format="gdigrab",
-        options=options or GDIGRAB_DEFAULT_OPTIONS,
-        **kwargs,
-    ).video
+class RTCPeerManager:
+    """
+    Singleton RTC Peer Manager
+    """
 
+    def __new__(cls):
+        if hasattr(cls, "instance") and cls.instance is not None:
+            return cls.instance
 
-class AetherRTC:
+        cls.instance = super().__new__(cls)
+        return cls.instance
+
     def __init__(self):
-        self.pc = RTCPeerConnection()
+        self.peers: set[RTCPeerConnection] = set()
 
-    async def initiate_Offer(self):
-        if sys.platform == "win32":
-            self.pc.addTrack(get_gdigrab_source())
+        self.logger = logging.getLogger("rtc.peermanager")
+        self.__screen_relay = MediaRelay()
+        self.__screen_track: Optional[MediaStreamTrack] = None
+
+    async def create_peer(
+        self, with_remote_desc: Optional[RTCSessionDescription] = None
+    ):
+        peer = RTCPeerConnection()
+
+        self.set_screen_source_for(peer)
+
+        if with_remote_desc:
+            await peer.setRemoteDescription(with_remote_desc)
+            offer = await peer.createAnswer()
         else:
-            self.pc.addTrack(
-                MediaPlayer(SAMPLE_VIDEO).video,
-            )
+            offer = await peer.createOffer()
 
-        offer = await self.pc.createOffer()
-        await self.pc.setLocalDescription(offer)
+        await peer.setLocalDescription(offer)
+        logger = self.logger.getChild(f"peer-0x{id(peer):0x}")
 
-        return {
-            "type": self.pc.localDescription.type,
-            "sdp": self.pc.localDescription.sdp,
-        }
+        @peer.on("connectionstatechange")
+        async def on_connectionstatechange():
+            state = peer.connectionState
 
-    async def take_answer(self, answer_data: dict):
-        answer = RTCSessionDescription(sdp=answer_data["sdp"], type=answer_data["type"])
-        return await self.pc.setRemoteDescription(answer)
+            if state in ("closed", "failed"):
+                self.peers.discard(peer)
+                self.logger.info("Peer %d discarded.", id(peer))
+
+                if not self.peers:
+                    self.logger.info(
+                        "Clearing screen sources because of no active peers."
+                    )
+                    self.reset_screen_source()
+
+                return await peer.close()
+
+            if state == "connected":
+                self.logger.info("Peer %d connected.", id(peer))
+                self.peers.add(peer)
+
+        @peer.on("datachannel")
+        def on_datachannel(channel: RTCDataChannel):
+            if channel.label not in ("mouse_events",):
+                return
+
+            @channel.on("message")
+            def on_message(message: str):
+                if channel.label == "mouse_events":
+                    data = json.loads(message)
+
+                    if pyautogui is not None:
+                        width, height = pyautogui.size()
+                        current_pos = pyautogui.position()
+
+                        logger.info(
+                            "Clicked at: x=%f, y=%f",
+                            data["payload"]["clicked_at"]["x_ratio"] * width,
+                            data["payload"]["clicked_at"]["y_ratio"] * height,
+                        )
+                        pyautogui.leftClick(
+                            x=data["payload"]["clicked_at"]["x_ratio"] * width,
+                            y=data["payload"]["clicked_at"]["y_ratio"] * height,
+                        )
+
+                        pyautogui.moveTo(*current_pos)
+
+        return peer
+
+    def reset_screen_source(self):
+        if self.__screen_track is not None:
+            self.__screen_track.stop()
+            self.__screen_track = None
+
+    def set_screen_source_for(self, peer: RTCPeerConnection):
+        if self.__screen_track is None:
+            if sys.platform == "win32":
+                player = MediaPlayer(
+                    "desktop",
+                    format="gdigrab",
+                    options={
+                        "framerate": "60",
+                    },
+                )
+            elif sys.platform == "linux":
+                player = MediaPlayer(
+                    f"{os.getenv('DISPLAY')}.0",
+                    format="x11grab",
+                    options={
+                        "video_size": "1920x1080",
+                        "framerate": "60",
+                    },
+                )
+            elif sys.platform == "darwin":
+                player = MediaPlayer(
+                    "default",
+                    format="avfoundation",
+                    options={
+                        "framerate": "60",
+                        "pixel_format": "yuv420p",
+                    },
+                )
+            else:
+                self.logger.warn(
+                    "Screen-mirroring is not supported for %r.", sys.platform
+                )
+
+                player = MediaPlayer(SAMPLE_VIDEO)
+
+            self.__screen_track = player.video
+
+        peer.addTrack(self.__screen_relay.subscribe(self.__screen_track))
 
     async def close(self):
-        return await self.pc.close()
+        for peer in self.peers:
+            await peer.close()
+
+        self.reset_screen_source()
+        self.peers.clear()
+
+    @staticmethod
+    def create_session_description(sdp: str, type: str):
+        return RTCSessionDescription(sdp=sdp, type=type)

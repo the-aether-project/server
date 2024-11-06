@@ -1,7 +1,5 @@
+from .authentication_view import AetherGitHubAuthenticationView
 from .index_view import AetherIndexView
-from .ws_view import AetherWSView
+from .webrtc_view import AetherWebRTCView
 
-__all__ = [
-    "AetherIndexView",
-    "AetherWSView",
-]
+__all__ = ["AetherIndexView", "AetherWebRTCView", "AetherGitHubAuthenticationView"]
