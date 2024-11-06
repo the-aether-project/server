@@ -10,7 +10,7 @@ from aether_server.routes import generic_routes
 def create_app(_) -> web.Application:
     project_root = pathlib.Path(__file__).parent
     app = web.Application()
-    set_context_for(app, use_database=False)
+    set_context_for(app)
 
     app.router.add_static("/static/", path=project_root / "static", name="static")
     app.add_routes(generic_routes)

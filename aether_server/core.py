@@ -89,9 +89,7 @@ class AetherContext:
             await self.__database_pool.wait_closed()
 
 
-def set_context_for(
-    app: web.Application, use_database: bool = False, development_mode=True
-):
+def set_context_for(app: web.Application, development_mode=True):
     if development_mode:
         with suppress(ImportError):
             import dotenv
@@ -102,6 +100,8 @@ def set_context_for(
             import aiohttp_debugtoolbar
 
             aiohttp_debugtoolbar.setup(app, intercept_redirects=False)
+
+    use_database = os.getenv("USE_DATABASE", "0") == "1"
 
     if use_database:
         set_windows_loop_policy()
