@@ -1,7 +1,8 @@
 version: "3.8"
 services:
   web:
-    build: .
+    build:
+      context: .
     ports:
       - "7878:7878"
     depends_on:
@@ -14,9 +15,9 @@ services:
     image: postgres:14-alpine
     restart: always
     environment:
-      - POSTGRES_USER=root
-      - POSTGRES_PASSWORD=secret
-      - POSTGRES_DB = aether
+      - POSTGRES_DB= aether
+      - POSTGRES_USER= root
+      - POSTGRES_PASSWORD= secret
     ports:
       - "5432:5432"
     networks:

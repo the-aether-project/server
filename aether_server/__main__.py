@@ -1,3 +1,4 @@
+import asyncio
 import pathlib
 
 import aiohttp
@@ -5,6 +6,7 @@ import aiohttp.web as web
 import aiohttp_jinja2
 import jinja2
 
+from aether_server.db import setup_database
 from aether_server.routes import generic_routes
 from aether_server.routes.utils import HTTP_CLIENT_APPKEY, RTC_APPKEY, RTCPeerManager
 
@@ -35,7 +37,7 @@ async def http_client_clearing_ctx(app: web.Application):
 
 def create_app(_) -> web.Application:
     project_root = pathlib.Path(__file__).parent
-
+    asyncio.run(setup_database())
     app = web.Application()
 
     app.router.add_static("/static/", path=project_root / "static", name="static")
