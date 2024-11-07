@@ -150,7 +150,7 @@ class RTCPeerManager:
         peer.addTrack(self.__screen_relay.subscribe(self.__screen_track))
 
     async def close(self):
-        for peer in self.peers:
+        for peer in self.peers.copy():
             await peer.close()
 
         self.reset_screen_source()
