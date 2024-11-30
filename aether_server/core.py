@@ -5,9 +5,10 @@ from contextlib import suppress
 
 import aiohttp
 import aiohttp.web as web
-import aiopg
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
 
-from .db import POOL_APPKEY, schema_path, try_fetch_login_params_from_env
+from .db import POOL_APPKEY, try_fetch_login_params_from_env, DB_Table
 from .routes.utils import HTTP_CLIENT_APPKEY, RTC_APPKEY, RTCPeerManager
 
 
@@ -36,6 +37,7 @@ class AetherContext:
         self.__http_client = None
 
         self.__database_pool = None
+        self.__database_engine = None
 
         self.app.on_shutdown.append(lambda _: self.close())
 
@@ -50,13 +52,21 @@ class AetherContext:
         self.app[HTTP_CLIENT_APPKEY] = self.__http_client
 
     async def __setup_database(self):
-        self.__database_pool = await aiopg.create_pool(
-            try_fetch_login_params_from_env()
+        self.__database_engine = create_async_engine(
+            try_fetch_login_params_from_env(),
+            echo=True,
         )
-        async with self.__database_pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(schema_path.read_text(encoding="utf-8"))
+        try:
+            async with self.__database_engine.begin() as conn:
+                await conn.run_sync(DB_Table().metadata.create_all)
+            print("Database tables created successfully")
+        except Exception as error:
+            print(f"Error occured on creating tables. {error}")
+            raise
 
+        self.__database_pool = sessionmaker(
+            self.__database_engine, expire_on_commit=False, class_=AsyncSession
+        )
         self.app[POOL_APPKEY] = self.__database_pool
 
     def __call__(self, *args, **kwds):
@@ -83,6 +93,9 @@ class AetherContext:
 
         if self.__http_client is not None:
             await self.__http_client.close()
+
+        if self.__database_engine is not None:
+            await self.__database_engine.dispose()
 
         if self.__database_pool is not None:
             self.__database_pool.close()
