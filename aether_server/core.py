@@ -8,7 +8,7 @@ import aiohttp.web as web
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from .db import POOL_APPKEY, try_fetch_login_params_from_env, DB_Table
+from .db import POOL_APPKEY, try_fetch_login_params_from_env, Base, trigger_total_cost
 from .routes.utils import HTTP_CLIENT_APPKEY, RTC_APPKEY, RTCPeerManager
 
 
@@ -58,10 +58,13 @@ class AetherContext:
         )
         try:
             async with self.__database_engine.begin() as conn:
-                await conn.run_sync(DB_Table().metadata.create_all)
-            print("Database tables created successfully")
+                await conn.run_sync(Base.metadata.create_all)
+                trigger_total_cost(Base)
+            print("Database tables Initialized successfully")
         except Exception as error:
-            print(f"Error occured on creating tables. {error}")
+            print(
+                f"Error occured on Initialising Database engine.\n Check if postgres server is ready for connection{error}"
+            )
             raise
 
         self.__database_pool = sessionmaker(
@@ -96,10 +99,6 @@ class AetherContext:
 
         if self.__database_engine is not None:
             await self.__database_engine.dispose()
-
-        if self.__database_pool is not None:
-            self.__database_pool.close()
-            await self.__database_pool.wait_closed()
 
 
 def set_context_for(app: web.Application, development_mode=True):
