@@ -5,11 +5,12 @@ import aiohttp_jinja2
 
 from aether_server.core import set_context_for
 from aether_server.routes import generic_routes
+from aether_server.routes.views import Authorize_middleware
 
 
 def create_app(_) -> web.Application:
     project_root = pathlib.Path(__file__).parent
-    app = web.Application()
+    app = web.Application(middlewares=[Authorize_middleware])
     set_context_for(app)
 
     app.router.add_static("/static/", path=project_root / "static", name="static")

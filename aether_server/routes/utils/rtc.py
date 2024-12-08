@@ -2,7 +2,11 @@ import json
 import logging
 import os
 import sys
-from typing import Optional
+from typing import Optional, Tuple
+import subprocess
+import re
+
+DISPLAY_RE = re.compile(r"(?P<width>\d+)x(?P<height>\d+)")
 
 from aiortc import (
     RTCDataChannel,
@@ -15,6 +19,26 @@ try:
     import pyautogui
 except ImportError:
     pyautogui = None
+
+
+class Display:
+    def __init__(self): ...
+
+    @property
+    def display_shape(self) -> Tuple[int, int]:
+        match sys.platform:
+            case "linux":
+                proc = subprocess.Popen(["xrandr"], stdout=subprocess.PIPE)
+                return tuple(
+                    map(
+                        int,
+                        DISPLAY_RE.search(proc.stdout.read().decode("utf-8")).group(
+                            1, 2
+                        ),
+                    )
+                )
+            case _:
+                raise NotImplementedError
 
 
 SAMPLE_VIDEO = (
@@ -112,6 +136,9 @@ class RTCPeerManager:
 
     def set_screen_source_for(self, peer: RTCPeerConnection):
         if self.__screen_track is None:
+            display = Display()
+            width, height = display.display_shape
+
             if sys.platform == "win32":
                 player = MediaPlayer(
                     "desktop",
@@ -125,8 +152,8 @@ class RTCPeerManager:
                     f"{os.getenv('DISPLAY')}.0",
                     format="x11grab",
                     options={
-                        "video_size": "1920x1080",
-                        "framerate": "60",
+                        "video_size": f"{width}x{height}",
+                        "framerate": "24",
                     },
                 )
             elif sys.platform == "darwin":
@@ -135,7 +162,6 @@ class RTCPeerManager:
                     format="avfoundation",
                     options={
                         "framerate": "60",
-                        "pixel_format": "yuv420p",
                     },
                 )
             else:
