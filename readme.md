@@ -8,6 +8,24 @@ First, ensure all [`requirements`](./requirements.txt) are installed via
 $ python -m pip install -R requirements.txt
 ```
 
+Make sure your .env file looks something like this.
+```sh
+
+DB_NAME=aether
+DB_USER=root
+DB_PASSWORD=secret
+DB_HOST=localhost
+DB_PORT=5432
+USE_DATABASE=1
+
+GITHUB_CLIENT_SECRET="client536secret163githubf96"
+GITHUB_CLIENT_ID="IvixUGITUHB_CLIENT_IDXE"
+
+JWT_SECRET="secret_is_i_love_you_secretly"
+JWT_EXPIRY= 10 #minutes
+
+```
+
 Then, use the following command to start the webserver.
 
 ```sh

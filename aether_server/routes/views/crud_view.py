@@ -39,9 +39,9 @@ class AetherComputersView(web.View):
                     return web.json_response(
                         {
                             "ok": False,
-                            "message": "Request data does not exist for particular user",
+                            "message": "Not Found: Request data does not exist for particular user",
                         },
-                        status=400,
+                        status=404,
                     )
                 serialized_data = [self.serialize(computer) for computer in computers]
 

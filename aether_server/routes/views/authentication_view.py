@@ -43,7 +43,7 @@ class AetherJWTManager:
         self.secret = os.getenv("JWT_SECRET")
         self.expiry = int(os.getenv("JWT_EXPIRY", 120))
         if not self.secret or not self.expiry:
-            raise ValueError("JWT secret or expiry but on set on environment")
+            raise ValueError("JWT secret or expiry must be set on environment")
 
     def create_jwt(self, username, user_id) -> str:
         payload = {
@@ -120,7 +120,7 @@ class AetherGitHubAuthenticationView(web.View):
 
 
 @generic_routes.view("/api/authorize-user/session")
-class AetherJWTSession(web.View):
+class AetherSession(web.View):
     async def post(self):
         payload = self.request.get("user")
         return web.json_response(
@@ -164,8 +164,8 @@ class AetherLoginView(web.View):
 
                 if not user:
                     return web.json_response(
-                        {"ok": False, "message": "Invalid email or password"},
-                        status=401,
+                        {"ok": False, "message": "User not found. Please signup"},
+                        status=404,
                     )
 
                 if not AuthenticationService.verify_hashed_password(
