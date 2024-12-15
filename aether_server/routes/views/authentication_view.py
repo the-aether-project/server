@@ -42,7 +42,7 @@ class AetherJWTManager:
     def __init__(self):
         self.secret = os.getenv("JWT_SECRET")
         self.expiry = int(os.getenv("JWT_EXPIRY", 120))
-        if not self.secret or not self.expiry:
+        if not self.secret:
             raise ValueError("JWT secret or expiry must be set on environment")
 
     def create_jwt(self, username, user_id) -> str:
@@ -145,7 +145,7 @@ class AetherLoginView(web.View):
             return web.json_response(
                 {"ok": False, "message": "Passwordd Invalid"}, status=400
             )
-        pool = self.request.app.get(POOL_APPKEY)
+        pool = self.request.app[POOL_APPKEY]
 
         if not pool:
             return web.json_response(
@@ -203,7 +203,6 @@ class AetherSignUpView(web.View):
         username = data.get("username")
         email = data.get("email")
         password = data.get("password")
-        is_landlord = data.get("is_landlord")
 
         if not AuthenticationService.verify_email(email):
             return web.json_response(
@@ -213,14 +212,6 @@ class AetherSignUpView(web.View):
         if username is None:
             return web.json_response(
                 {"aok": False, "message": "Username not provided"}, status=400
-            )
-        if is_landlord is None:
-            return web.json_response(
-                {
-                    "ok": False,
-                    "message": "is_landlord not provided",
-                },
-                status=400,
             )
 
         if not AuthenticationService.verify_password(password):
@@ -256,7 +247,6 @@ class AetherSignUpView(web.View):
                             "username": username,
                             "email": email,
                             "stored_credentials": stored_credentials,
-                            "is_landlord": is_landlord,
                         }
                     ],
                 )
