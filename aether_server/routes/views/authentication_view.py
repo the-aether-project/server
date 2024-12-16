@@ -22,10 +22,10 @@ class AuthenticationService:
 
     @staticmethod
     def verify_password(password: str) -> bool:
-        password_regex = (
-            r'^(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,}$'
-        )
-        return re.match(password_regex, password) is not None
+        if len(password) < 8:
+            return False
+
+        return True
 
     @staticmethod
     def hash_password(password: str) -> str:
