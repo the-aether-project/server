@@ -79,16 +79,17 @@ function openConnection() {
         var offer = pc.localDescription;
 
         fetch(
-            '/webrtc-offer',
+            '/api/authorized/webrtc-offer',
             {
                 method: 'POST',
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer <tokenhere>",
+                },
                 body: JSON.stringify({
                     'sdp': offer.sdp,
                     'type': offer.type,
                 }),
-                headers: {
-                    'Content-Type': 'application/json'
-                }
             }
         ).then((response) => {
             if (response.ok) {

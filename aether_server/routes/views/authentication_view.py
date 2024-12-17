@@ -24,7 +24,6 @@ class AuthenticationService:
     def verify_password(password: str) -> bool:
         if len(password) < 8:
             return False
-
         return True
 
     @staticmethod
@@ -39,7 +38,7 @@ class AuthenticationService:
 class AetherJWTManager:
     algorithm = "HS256"
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.secret = os.getenv("JWT_SECRET")
         self.expiry = int(os.getenv("JWT_EXPIRY", 120))
         if not self.secret:
@@ -57,6 +56,16 @@ class AetherJWTManager:
 
     def decode_jwt(self, token) -> str:
         return jwt.decode(token, self.secret, self.algorithm)
+
+
+"""
+@Public route
+/api/authenticate-github
+
+@Require
+None
+
+"""
 
 
 @generic_routes.view("/api/authenticate-github")
@@ -119,7 +128,19 @@ class AetherGitHubAuthenticationView(web.View):
                 raise web.HTTPTemporaryRedirect(response.url)
 
 
-@generic_routes.view("/api/authorize-user/session")
+"""
+@Private route
+/api/authorized
+
+@Require body
+None
+
+@Authorization header
+Bearer <token>
+"""
+
+
+@generic_routes.view("/api/authorized/session")
 class AetherSession(web.View):
     async def post(self):
         payload = self.request.get("user")
@@ -127,6 +148,17 @@ class AetherSession(web.View):
             {"ok": True, "message": payload},
             status=200,
         )
+
+
+"""
+@Public route
+/api/authenticate-user/login
+
+@Require body
+
+email,
+password
+"""
 
 
 @generic_routes.view("/api/authenticate-user/login")
@@ -190,6 +222,18 @@ class AetherLoginView(web.View):
                 return web.json_response(
                     {"ok": False, "message": f"Server error: {error}"}, status=500
                 )
+
+
+"""
+@Public route
+/api/authenticate-user/signup
+
+@Require body
+
+username,
+email,
+password
+"""
 
 
 @generic_routes.view("/api/authenticate-user/signup")
