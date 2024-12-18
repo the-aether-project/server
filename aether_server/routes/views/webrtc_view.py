@@ -1,5 +1,4 @@
 import aiohttp.web as web
-
 from aether_server.routes.routes_decl import generic_routes
 from aether_server.routes.utils import RTC_APPKEY
 

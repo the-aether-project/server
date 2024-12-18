@@ -266,7 +266,7 @@ class AetherSignUpView(web.View):
                 },
                 status=400,
             )
-        pool = self.request.app.get(POOL_APPKEY)
+        pool = self.request.app[POOL_APPKEY]
 
         async with pool() as session:
             try:

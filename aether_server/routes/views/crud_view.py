@@ -27,8 +27,10 @@ class AetherComputersView(web.View):
             return web.json_response(
                 {"ok": False, "message": "Failed to get User information"}, status=500
             )
+
         user_id = int(payload.get("sub"))
         pool = self.request.app.get(POOL_APPKEY)
+
         async with pool() as session:
             try:
                 stmt = select(Computers).where(Computers.landlord_id == user_id)

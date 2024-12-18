@@ -84,7 +84,7 @@ function openConnection() {
                 method: 'POST',
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": "Bearer <tokenhere>",
+                    "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidXNlcm5hbWUiOiJqb2huX2RvZSIsImlhdCI6MTczNDUzNjk4NiwiZXhwIjoxNzM0NTM3NTg2fQ.xzsLQ57S7zCPpoViRd_DXuDMkrBb8mWDWYpRsvUvKZI",
                 },
                 body: JSON.stringify({
                     'sdp': offer.sdp,
