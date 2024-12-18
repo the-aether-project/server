@@ -7,5 +7,5 @@ from aether_server.routes.routes_decl import generic_routes
 @generic_routes.view("/")
 class AetherIndexView(web.View):
     @aiohttp_jinja2.template("index.html")
-    async def get(self):
+    async def get(self) -> web.Response:
         return {}
