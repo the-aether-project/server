@@ -79,16 +79,17 @@ function openConnection() {
         var offer = pc.localDescription;
 
         fetch(
-            '/webrtc-offer',
+            '/api/authorized/webrtc-offer',
             {
                 method: 'POST',
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidXNlcm5hbWUiOiJqb2huX2RvZSIsImlhdCI6MTczNDUzNjk4NiwiZXhwIjoxNzM0NTM3NTg2fQ.xzsLQ57S7zCPpoViRd_DXuDMkrBb8mWDWYpRsvUvKZI",
+                },
                 body: JSON.stringify({
                     'sdp': offer.sdp,
                     'type': offer.type,
                 }),
-                headers: {
-                    'Content-Type': 'application/json'
-                }
             }
         ).then((response) => {
             if (response.ok) {
