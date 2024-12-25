@@ -20,10 +20,7 @@ async def Authorize_middleware(request, handler):
         try:
             jwt_manager = AetherJWTManager()
             payload = jwt_manager.decode_jwt(token)
-            print("payload is ", payload)
             request["user"] = payload
-            return await handler(request)
-
         except jwt.ExpiredSignatureError:
             return web.json_response(
                 {"ok": False, "message": "Token expired, Please login again"},
@@ -41,3 +38,4 @@ async def Authorize_middleware(request, handler):
             },
             status=401,
         )
+    return await handler(request)

@@ -1,6 +1,8 @@
 import aiohttp.web as web
 from aether_server.routes.routes_decl import generic_routes
 from aether_server.routes.utils import RTC_APPKEY
+# from aether_server.routes.views.authentication_view import AetherJWTManager
+# import json
 
 
 @generic_routes.view("/api/authorized/webrtc-offer")

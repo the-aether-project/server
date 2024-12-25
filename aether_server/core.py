@@ -39,6 +39,10 @@ class AetherContext:
         self.__database_pool = None
         self.__database_engine = None
 
+        self.app["identification_token"] = set()
+        self.app["active_landlords"] = set()
+        self.app["webrtc_info"] = set()
+
         self.app.on_shutdown.append(lambda _: self.close())
 
     async def __setup_rtc_peer_manager(self):
