@@ -1,4 +1,5 @@
 import aiohttp.web as web
+import aiohttp_jinja2
 from aiohttp_middlewares import cors_middleware
 
 from aether_server.core import set_context_for
@@ -16,6 +17,7 @@ def create_app(_) -> web.Application:
 
     app.add_routes(generic_routes)
 
+    aiohttp_jinja2.setup(app)
     return app
 
 

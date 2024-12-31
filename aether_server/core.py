@@ -70,7 +70,6 @@ class AetherContext:
         setup_coros = [
             self.__setup_http_client,
         ]
-
         if self.use_database:
             setup_coros.append(self.__setup_database)
 
@@ -99,9 +98,7 @@ def set_context_for(app: web.Application, development_mode=True):
             import aiohttp_debugtoolbar
 
             aiohttp_debugtoolbar.setup(app, intercept_redirects=False)
-
     use_database = os.getenv("USE_DATABASE", "0") == "1"
-
     if use_database:
         set_windows_loop_policy()
 
