@@ -1,17 +1,19 @@
-import bcrypt
-import aiohttp.web as web
-from sqlalchemy.future import select
-from sqlalchemy import insert
-import jwt
-
+import datetime
 import os
 import re
-import datetime
 
-from aether_server.routes.routes_decl import generic_routes
-from aether_server.routes.utils import HTTP_CLIENT_APPKEY
+import aiohttp
+import aiohttp.web as web
+import bcrypt
+import jwt
+from sqlalchemy import insert
+from sqlalchemy.future import select
+
 from aether_server.db.database import POOL_APPKEY
 from aether_server.db.schema import Users
+from aether_server.routes.routes_decl import generic_routes
+
+HTTP_CLIENT_APPKEY = web.AppKey("http_client", aiohttp.ClientSession)
 
 
 class AuthenticationService:
