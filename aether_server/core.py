@@ -39,9 +39,20 @@ class AetherContext:
         self.__database_pool = None
         self.__database_engine = None
 
-        self.app["identification_token"] = set()
-        self.app["active_landlords"] = set()
-        self.app["webrtc_info"] = set()
+        """
+        landlord=[
+        {
+            "user_id": user_id,
+            "identification": token,
+            "active": False,
+            "ws": None,
+            "ws_client": None,
+        }
+        ]
+        """
+        self.app["landlords"] = []
+        self.app["landlord_specification"] = []
+        self.app["clients"] = set()
 
         self.app.on_shutdown.append(lambda _: self.close())
 

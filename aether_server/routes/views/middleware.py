@@ -4,7 +4,7 @@ import jwt
 
 
 """
-Public path are any that does not starts with "/api/authorized"
+Public path are any that does not start with "/api/authorized"
 """
 
 
@@ -39,3 +39,4 @@ async def Authorize_middleware(request, handler):
             status=401,
         )
     return await handler(request)
+

@@ -115,7 +115,6 @@ class AetherGitHubAuthenticationView(web.View):
             return web.Response(
                 text=f"Welcome, {user_data['login']}. You are now logged in."
             )
-
         else:
             async with http_client.get(
                 "https://github.com/login/oauth/authorize",
