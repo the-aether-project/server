@@ -57,6 +57,10 @@ class AetherJWTManager:
     def decode_jwt(self, token) -> str:
         return jwt.decode(token, self.secret, self.algorithm)
 
+    def verify_jwt_expiry(self, expiry_date: int) -> bool:
+        current_time = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+        return abs(expiry_date - current_time) / 60 >= self.expiry
+
 
 """
 @Public route
@@ -111,7 +115,6 @@ class AetherGitHubAuthenticationView(web.View):
             return web.Response(
                 text=f"Welcome, {user_data['login']}. You are now logged in."
             )
-
         else:
             async with http_client.get(
                 "https://github.com/login/oauth/authorize",
