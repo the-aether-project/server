@@ -5,24 +5,22 @@ class AetherWebRTCView:
             #     return await ws_client.send_json(
             #         {"type": "ERROR", "message": "You can not rent your own device"}
             #     )
-            
-            selected_landlord = None
-            for landlord in landlords:
-                if landlord["user_id"] == landlord_id:
-                    # error on landlord is already active
-                    if landlord["active"]:
-                        return await ws_client.send_json(
-                            {
-                                "type": "ERROR",
-                                "message": "Landlord has just been rented. Please try another one.",
-                            }
-                        )
-                    else:
-                        selected_landlord = landlord
-                        break
-            if not selected_landlord:
+
+            selected_landlord = next(
+                (
+                    landlord
+                    for landlord in landlords
+                    if landlord["user_id"] == landlord_id
+                ),
+                None,
+            )
+
+            if selected_landlord is None or selected_landlord["active"]:
                 return await ws_client.send_json(
-                    {"type": "ERROR", "message": "Landlord not found"}
+                    {
+                        "type": "ERROR",
+                        "message": "Landlord is either not present or Already active with some other user",
+                    }
                 )
 
             ws_landlord = selected_landlord["ws"]
@@ -41,6 +39,6 @@ class AetherWebRTCView:
             return await ws_client.send_json(
                 {
                     "type": "ERROR",
-                    "message": f"WebRTC connection failed {e}",
+                    "message": f"WebRTC connection failed from server {e}",
                 }
             )

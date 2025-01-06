@@ -105,7 +105,7 @@ class AetherIdentificationView(web.View):
                     )
 
                 landlords = self.request.app["landlords"]
-                print("id: landlrods are", landlords)
+                print(f"__LOG.__landlords are : {landlords}")
 
                 if landlords:
                     # returning if user is already active.
@@ -152,7 +152,7 @@ class AetherIdentificationView(web.View):
                     }
                 )
 
-                print("id:after append landlrods are", landlords)
+                print("__LOG: After appending logs", landlords)
 
                 return web.json_response(
                     {
