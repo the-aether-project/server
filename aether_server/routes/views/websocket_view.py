@@ -4,7 +4,6 @@ import jwt
 
 from aether_server.routes import generic_routes
 from aether_server.routes.views.authentication_view import AetherJWTManager
-from aether_server.routes.views.webrtc_view import AetherWebRTCView
 
 import json
 import logging
@@ -222,13 +221,30 @@ class ClientManager:
         )
 
     async def offer(self, offer, landlord_id):
-        webrtc_manager = AetherWebRTCView()
-        await webrtc_manager.post(
-            self.landlords,
-            self.__ws,
-            self.user_payload["sub"],
-            offer,
-            landlord_id,
+        selected_landlord = self.my_landlord(landlord_id)
+        if selected_landlord is None or selected_landlord["active"]:
+            await self.__send_json(
+                {
+                    "type": "ERROR",
+                    "message": "Landlord is either not present or Already active with some other user",
+                }
+            )
+
+        ws_landlord = selected_landlord["ws"]
+        if ws_landlord is None:
+            return await self.__send_json(
+                {"type": "ERROR", "message": "Landlord is not active anymore"}
+            )
+
+            # TODO: UUID to identify the client_id
+            # sending sdp offer to the landlord
+        selected_landlord["ws_client"] = self.__ws
+        return await ws_landlord.send_json(
+            {
+                "type": "CONNECTION",
+                "offer": offer,
+                "uuid": str(self.user_payload.get("sub")),
+            }
         )
 
     async def control(self, landlord_id):
