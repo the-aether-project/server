@@ -5,11 +5,10 @@ from contextlib import suppress
 
 import aiohttp
 import aiohttp.web as web
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from .db import POOL_APPKEY, try_fetch_login_params_from_env, Base, trigger_total_cost
-from .routes.utils import HTTP_CLIENT_APPKEY, RTC_APPKEY, RTCPeerManager
+from .db import POOL_APPKEY, Base, trigger_total_cost, try_fetch_login_params_from_env
 
 
 def set_windows_loop_policy():
@@ -33,9 +32,6 @@ class AetherContext:
         self.app = app
         self.use_database = use_database
 
-        self.__rtc_peer_manager = None
-        self.__http_client = None
-
         self.__database_pool = None
         self.__database_engine = None
 
@@ -56,15 +52,10 @@ class AetherContext:
 
         self.app.on_shutdown.append(lambda _: self.close())
 
-    async def __setup_rtc_peer_manager(self):
-        self.__rtc_peer_manager = RTCPeerManager()
-        self.app[RTC_APPKEY] = self.__rtc_peer_manager
-
     async def __setup_http_client(self):
         self.__http_client = aiohttp.ClientSession(
             headers={"User-Agent": "Aether/1.0 (unreleased)"}
         )
-        self.app[HTTP_CLIENT_APPKEY] = self.__http_client
 
     async def __setup_database(self):
         self.__database_engine = create_async_engine(
@@ -92,10 +83,8 @@ class AetherContext:
 
     async def create(self):
         setup_coros = [
-            self.__setup_rtc_peer_manager,
             self.__setup_http_client,
         ]
-
         if self.use_database:
             setup_coros.append(self.__setup_database)
 
@@ -106,9 +95,6 @@ class AetherContext:
         await self.close()
 
     async def close(self):
-        if self.__rtc_peer_manager is not None:
-            await self.__rtc_peer_manager.close()
-
         if self.__http_client is not None:
             await self.__http_client.close()
 
@@ -127,9 +113,7 @@ def set_context_for(app: web.Application, development_mode=True):
             import aiohttp_debugtoolbar
 
             aiohttp_debugtoolbar.setup(app, intercept_redirects=False)
-
     use_database = os.getenv("USE_DATABASE", "0") == "1"
-
     if use_database:
         set_windows_loop_policy()
 
