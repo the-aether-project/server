@@ -35,6 +35,21 @@ class AetherContext:
         self.__database_pool = None
         self.__database_engine = None
 
+        """
+        landlord=[
+        {
+            "user_id": user_id,
+            "identification": token,
+            "active": False,
+            "ws": None,
+            "ws_client": None,
+        }
+        ]
+        """
+        self.app["landlords"] = []
+        self.app["landlord_specification"] = []
+        self.app["clients"] = set()
+
         self.app.on_shutdown.append(lambda _: self.close())
 
     async def __setup_http_client(self):

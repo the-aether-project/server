@@ -4,7 +4,7 @@ import jwt
 
 
 """
-Public path are any that does not starts with "/api/authorized"
+Public path are any that does not start with "/api/authorized"
 """
 
 
@@ -20,19 +20,16 @@ async def Authorize_middleware(request, handler):
         try:
             jwt_manager = AetherJWTManager()
             payload = jwt_manager.decode_jwt(token)
-            print("payload is ", payload)
             request["user"] = payload
-            return await handler(request)
+        except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+            return web.json_response(
+                {
+                    "ok": False,
+                    "message": "Token either Invalid or Expired, Please login again",
+                },
+                status=400,
+            )
 
-        except jwt.ExpiredSignatureError:
-            return web.json_response(
-                {"ok": False, "message": "Token expired, Please login again"},
-                status=401,
-            )
-        except jwt.InvalidTokenError:
-            return web.json_response(
-                {"ok": False, "message": "Invalid token"}, status=403
-            )
     else:
         return web.json_response(
             {
@@ -41,3 +38,4 @@ async def Authorize_middleware(request, handler):
             },
             status=401,
         )
+    return await handler(request)
